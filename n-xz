@@ -73,6 +73,16 @@ destroyButton.Position = UDim2.new(0, 20, 0, 60)
 destroyButton.Text = "Destroy"
 destroyButton.TextScaled = true
 
+-- Create Auto Button
+local autoButton = Instance.new("TextButton")
+autoButton.Parent = frame
+autoButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0) -- Start Red (Off)
+autoButton.Size = UDim2.new(0, 160, 0, 30)
+autoButton.Position = UDim2.new(0, 20, 0, 100)
+autoButton.Text = "Auto"
+autoButton.TextScaled = true
+local autoToggle = false -- State variable for Auto button
+
 -- Create Status Indicator
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Parent = frame
