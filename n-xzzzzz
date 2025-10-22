@@ -1,0 +1,178 @@
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Settings
+local TOGGLE_KEY = Enum.KeyCode.LeftControl -- Toggle key
+local HRP_SIZE = 6
+local enabled = true
+
+local trackedHRPs = {}
+local originalProps = {}
+local espObjects = {}
+local playerTeams = {}
+
+-- Cache team updates
+local function cacheTeam(player)
+	playerTeams[player] = player.Team
+	player:GetPropertyChangedSignal("Team"):Connect(function()
+		playerTeams[player] = player.Team
+	end)
+end
+
+-- Team check (cached)
+local function isEnemy(player)
+	if not LocalPlayer.Team then
+		return true
+	end
+	return playerTeams[player] ~= LocalPlayer.Team
+end
+
+-- Save original HRP properties
+local function saveOriginal(hrp)
+	if hrp and not originalProps[hrp] then
+		originalProps[hrp] = {
+			Size = hrp.Size,
+			Transparency = hrp.Transparency,
+			BrickColor = hrp.BrickColor,
+			Material = hrp.Material,
+			CanCollide = hrp.CanCollide,
+		}
+	end
+end
+
+-- Restore original HRP properties
+local function restoreOriginal(hrp, player)
+	local props = originalProps[hrp]
+	if props then
+		hrp.Size = props.Size
+		hrp.Transparency = props.Transparency
+		hrp.BrickColor = props.BrickColor
+		hrp.Material = props.Material
+		hrp.CanCollide = props.CanCollide
+		originalProps[hrp] = nil
+	end
+
+	if espObjects[player] then
+		espObjects[player]:Destroy()
+		espObjects[player] = nil
+	end
+end
+
+-- Apply HRP marker + highlight (debug)
+local function applyTo(hrp, player)
+	if not hrp then return end
+	saveOriginal(hrp)
+
+	hrp.Size = Vector3.new(HRP_SIZE, HRP_SIZE, HRP_SIZE)
+	hrp.Transparency = 0.7
+	hrp.BrickColor = BrickColor.new("Bright red")
+	hrp.Material = Enum.Material.Neon
+	hrp.CanCollide = false
+
+	if not espObjects[player] then
+		local highlight = Instance.new("Highlight")
+		highlight.Adornee = hrp.Parent
+		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+		highlight.FillColor = Color3.fromRGB(0, 150, 255)
+		highlight.FillTransparency = 0.7
+		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+		highlight.OutlineTransparency = 0.5
+		highlight.Parent = hrp.Parent
+		espObjects[player] = highlight
+	end
+end
+
+-- Handle characters
+local function handleCharacter(player, character)
+	if player == LocalPlayer then return end
+	if not isEnemy(player) then return end
+
+	local hrp = character:FindFirstChild("HumanoidRootPart") or character:WaitForChild("HumanoidRootPart", 5)
+	if not hrp then return end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Died:Connect(function()
+			local old = trackedHRPs[player]
+			if old then
+				restoreOriginal(old, player)
+				trackedHRPs[player] = nil
+			end
+		end)
+	end
+
+	trackedHRPs[player] = hrp
+
+	if enabled then
+		applyTo(hrp, player)
+	else
+		restoreOriginal(hrp, player)
+	end
+
+	character.ChildAdded:Connect(function(child)
+		if child.Name == "HumanoidRootPart" then
+			local old = trackedHRPs[player]
+			if old and old ~= child then
+				restoreOriginal(old, player)
+			end
+			trackedHRPs[player] = child
+			if enabled then
+				applyTo(child, player)
+			end
+		end
+	end)
+
+	character.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			local old = trackedHRPs[player]
+			if old then
+				restoreOriginal(old, player)
+			end
+			trackedHRPs[player] = nil
+		end
+	end)
+end
+
+-- Handle player
+local function onPlayer(player)
+	if player == LocalPlayer then return end
+	cacheTeam(player)
+
+	if player.Character then
+		handleCharacter(player, player.Character)
+	end
+
+	player.CharacterAdded:Connect(function(char)
+		handleCharacter(player, char)
+	end)
+end
+
+for _, p in ipairs(Players:GetPlayers()) do
+	onPlayer(p)
+end
+
+Players.PlayerAdded:Connect(onPlayer)
+
+-- Toggle function
+local function setEnabled(state)
+	enabled = state
+	for player, hrp in pairs(trackedHRPs) do
+		if hrp and hrp.Parent then
+			if enabled then
+				applyTo(hrp, player)
+			else
+				restoreOriginal(hrp, player)
+			end
+		end
+	end
+end
+
+-- Toggle key
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed then return end
+	if input.KeyCode == TOGGLE_KEY then
+		setEnabled(not enabled)
+	end
+end)
