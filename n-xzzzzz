@@ -66,7 +66,7 @@ local function applyTo(hrp, player)
 	saveOriginal(hrp)
 
 	hrp.Size = Vector3.new(HRP_SIZE, HRP_SIZE, HRP_SIZE)
-	hrp.Transparency = 0.7
+	hrp.Transparency = 1
 	hrp.BrickColor = BrickColor.new("Bright red")
 	hrp.Material = Enum.Material.Neon
 	hrp.CanCollide = false
@@ -76,9 +76,9 @@ local function applyTo(hrp, player)
 		highlight.Adornee = hrp.Parent
 		highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
 		highlight.FillColor = Color3.fromRGB(0, 150, 255)
-		highlight.FillTransparency = 0.7
+		highlight.FillTransparency = 1
 		highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-		highlight.OutlineTransparency = 0.5
+		highlight.OutlineTransparency = 1
 		highlight.Parent = hrp.Parent
 		espObjects[player] = highlight
 	end
