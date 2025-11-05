@@ -1,0 +1,27 @@
+@echo off
+:: ===============================
+:: Network Reset (Silent, Admin)
+:: ===============================
+
+:: Check for admin privileges
+net session >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Requesting administrative privileges...
+    powershell -Command "Start-Process '%~f0' -Verb runAs"
+    exit /b
+)
+
+:: Disable command output
+@echo off
+
+:: Run all commands silently
+ipconfig /release >nul 2>&1
+ipconfig /flushdns >nul 2>&1
+ipconfig /renew >nul 2>&1
+netsh int ip reset >nul 2>&1
+netsh winsock reset >nul 2>&1
+
+:: Optional: Restart automatically
+:: shutdown /r /t 5 /c "Network settings have been reset. Restarting..."
+
+exit /b
