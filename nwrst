@@ -1,27 +1,25 @@
-@echo off
-:: ===============================
-:: Network Reset (Silent, Admin)
-:: ===============================
+# ===============================
+# Network Reset (Silent, Admin)
+# ===============================
 
-:: Check for admin privileges
-net session >nul 2>&1
-if %errorlevel% neq 0 (
-    echo Requesting administrative privileges...
-    powershell -Command "Start-Process '%~f0' -Verb runAs"
-    exit /b
-)
+# Auto-elevate to Administrator
+$IsAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()
+).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
-:: Disable command output
-@echo off
+if (-not $IsAdmin) {
+    Write-Host "Requesting administrative privileges..." -ForegroundColor Yellow
+    Start-Process powershell -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    exit
+}
 
-:: Run all commands silently
-ipconfig /release >nul 2>&1
-ipconfig /flushdns >nul 2>&1
-ipconfig /renew >nul 2>&1
-netsh int ip reset >nul 2>&1
-netsh winsock reset >nul 2>&1
+# Suppress output and errors
+$null = ipconfig /release 2>$null
+$null = ipconfig /flushdns 2>$null
+$null = ipconfig /renew 2>$null
+$null = netsh int ip reset 2>$null
+$null = netsh winsock reset 2>$null
 
-:: Optional: Restart automatically
-:: shutdown /r /t 5 /c "Network settings have been reset. Restarting..."
+# Optional: restart automatically (uncomment to enable)
+# Restart-Computer -Force -Delay 5 -Confirm:$false
 
-exit /b
+exit
